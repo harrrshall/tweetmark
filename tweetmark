@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+#
+# tweetmark: one-command launcher for the X/Twitter bookmarks knowledge base.
+#
+# Subcommands:
+#   tweetmark                 sync, then open kb.html (daily default)
+#   tweetmark import          full pipeline into the default KB, then open kb.html
+#   tweetmark sync            incremental pipeline, then open kb.html
+#   tweetmark ask "QUERY"     query.py (passes remaining args; supports --k/--json)
+#   tweetmark open            regenerate (index.py) + open kb.html
+#   tweetmark status          doctor.py --stats
+#   tweetmark install         idempotent skill symlinks into ~/.claude and ~/.agents
+#   tweetmark help|-h|--help  usage
+#
+# A leading `--kb PATH` (before the subcommand) overrides $BOOKMARKS_KB / default.
+# Stdlib + coreutils only; no pip. The pipeline uses --engine mock (zero setup);
+# for your own inference use the agent `import` verb in SKILL.md (--engine agent).
+
+set -euo pipefail
+
+# --- resolve this script's real directory (follow symlinks so `install` works) -
+SRC="${BASH_SOURCE[0]}"
+while [ -h "$SRC" ]; do
+  DIR="$(cd -P "$(dirname "$SRC")" && pwd)"
+  SRC="$(readlink "$SRC")"
+  [[ $SRC != /* ]] && SRC="$DIR/$SRC"
+done
+ROOT="$(cd -P "$(dirname "$SRC")" && pwd)"
+SCRIPTS="$ROOT/.agents/skills/bookmarks/scripts"
+
+# --- global --kb override (parsed BEFORE the subcommand) ----------------------
+KB="${BOOKMARKS_KB:-$HOME/Documents/Twitter Bookmarks}"
+if [ "${1:-}" = "--kb" ]; then
+  if [ $# -lt 2 ]; then
+    echo "tweetmark: --kb needs a PATH" >&2
+    exit 2
+  fi
+  KB="$2"
+  shift 2
+fi
+
+PY="$(command -v python3 || true)"
+if [ -z "$PY" ]; then
+  echo "tweetmark: python3 not found on PATH" >&2
+  exit 1
+fi
+
+# --- helpers ------------------------------------------------------------------
+_open() {
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$1" >/dev/null 2>&1 &
+  elif command -v open >/dev/null 2>&1; then
+    open "$1"
+  elif command -v wslview >/dev/null 2>&1; then
+    wslview "$1"
+  else
+    echo "Open manually: $1"
+  fi
+}
+
+run() {
+  # run <script.py> [extra args...]   always under the resolved --kb
+  "$PY" "$SCRIPTS/$1" --kb "$KB" "${@:2}"
+}
+
+pipeline() {
+  # pipeline --full  => import (complete walk)
+  # pipeline ""      => sync   (incremental: collect stops at first seen)
+  mkdir -p "$KB"
+  run collect.py ${1:+$1}
+  run ingest.py
+  run enrich.py --engine mock
+  run build_kb.py
+  run index.py
+}
+
+finish() {
+  local n
+  n=$(wc -l < "$KB/INDEX.tsv" 2>/dev/null || echo 0)
+  n=$(printf '%s' "$n" | tr -d '[:space:]')
+  echo "TweetMark: ${n:-0} bookmarks in $KB"
+  _open "$KB/kb.html"
+  echo "$KB/kb.html"
+}
+
+usage() {
+  cat <<'EOF'
+tweetmark: X/Twitter bookmarks knowledge base
+
+usage:
+  tweetmark                 sync, then open kb.html (daily default)
+  tweetmark import          full export -> build the whole KB, then open kb.html
+  tweetmark sync            incremental refresh, then open kb.html
+  tweetmark ask "QUERY"     search the KB (passes extra args, e.g. --k 8 --json)
+  tweetmark open            regenerate the UI (index.py) + open kb.html
+  tweetmark status          counts per area, tag histogram, growth (doctor --stats)
+  tweetmark install         symlink the skill into ~/.claude and ~/.agents (idempotent)
+  tweetmark help            this message
+
+global:
+  --kb PATH   (before the subcommand) overrides $BOOKMARKS_KB and the default
+              KB (~/Documents/Twitter Bookmarks).
+
+notes:
+  The pipeline enriches with --engine mock (deterministic, zero setup). To enrich
+  with your own inference, run the agent `import` verb documented in SKILL.md
+  (enrich.py --engine agent).
+EOF
+}
+
+install_skill() {
+  mkdir -p "$HOME/.claude/skills" "$HOME/.agents/skills"
+  ln -sfn "$ROOT/.agents/skills/bookmarks" "$HOME/.claude/skills/bookmarks"
+  ln -sfn "$ROOT/.agents/skills/bookmarks" "$HOME/.agents/skills/bookmarks"
+  echo "Installed: ~/.claude/skills/bookmarks, ~/.agents/skills/bookmarks"
+  if [ -d "$HOME/.local/bin" ]; then
+    ln -sfn "$ROOT/tweetmark" "$HOME/.local/bin/tweetmark"
+    echo "Linked launcher: ~/.local/bin/tweetmark (ensure ~/.local/bin is on PATH)"
+  else
+    echo "Skipped launcher link: $HOME/.local/bin does not exist."
+    echo "Run directly with: $ROOT/tweetmark"
+  fi
+}
+
+# --- dispatch -----------------------------------------------------------------
+cmd="${1:-sync}"
+case "$cmd" in
+  import)
+    pipeline --full
+    finish
+    ;;
+  sync|"")
+    pipeline ""
+    finish
+    ;;
+  ask)
+    shift
+    if [ $# -lt 1 ]; then
+      echo "tweetmark ask: needs a QUERY, e.g. tweetmark ask \"dpo vs ppo\" --k 8" >&2
+      exit 2
+    fi
+    run query.py "$@"
+    ;;
+  open)
+    run index.py
+    finish
+    ;;
+  status)
+    run doctor.py --stats
+    ;;
+  install)
+    install_skill
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "tweetmark: unknown subcommand '$cmd'" >&2
+    echo >&2
+    usage >&2
+    exit 2
+    ;;
+esac

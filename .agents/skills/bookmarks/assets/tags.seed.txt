@@ -1,0 +1,65 @@
+# Controlled starter vocabulary for bookmark tags.
+# One tag per line, lowercase, kebab-case. Lines starting with '#' are comments.
+# The enricher picks 2-5 tags per item from this list and proposes a NEW tag
+# only when nothing here fits. doctor.py tracks drift against this file.
+# Grouped by area for readability; the grouping is informational only.
+
+# --- AI & Tech (10-19) ---
+llm
+rlhf
+fine-tuning
+prompting
+agents
+rag
+inference
+tts
+diffusion
+open-source
+benchmarks
+coding
+
+# --- Tools & Resources (20-29) ---
+tool
+dataset
+template
+extension
+api
+cli
+
+# --- Business & Startups (30-39) ---
+startup
+gtm
+marketing
+fundraising
+hiring
+growth
+
+# --- Money & Finance (40-49) ---
+investing
+personal-finance
+crypto
+markets
+
+# --- Productivity & Self-Improvement (50-59) ---
+productivity
+note-taking
+habits
+focus
+
+# --- Health & Fitness (60-69) ---
+fitness
+nutrition
+sleep
+mental-health
+
+# --- Design & Creative (70-79) ---
+ui-ux
+typography
+branding
+inspiration
+
+# --- Learning & How-To (80-89) ---
+tutorial
+explainer
+reference
+career

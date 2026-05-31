@@ -1,0 +1,12 @@
+# Codex (OpenAI) display polish for the bookmarks skill.
+# Optional metadata only; all real logic lives in SKILL.md + scripts/.
+# Schema matches Codex's agents/openai.yaml contract (interface/policy blocks).
+interface:
+  display_name: "X/Twitter Bookmarks KB"
+  short_description: "Import, search, and organize your X bookmarks"
+  default_prompt: "Use $bookmarks to import my X/Twitter bookmarks into a local searchable knowledge base, then ask it questions about my saved tweets."
+
+policy:
+  # Let Codex inject this skill when a request matches the description, without
+  # an explicit $bookmarks invocation. Defaults to true; set explicitly for clarity.
+  allow_implicit_invocation: true
