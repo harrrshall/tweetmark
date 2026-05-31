@@ -1,8 +1,8 @@
 # TweetMark
 
-**TweetMark** is an **Agent Skill** for Claude Code and Codex. Point your agent at this
-folder and paste one instruction; it imports every X (Twitter) bookmark and opens a
-local, searchable screen of all your saved tweets. Everything stays on your own disk.
+**TweetMark** is an **Agent Skill** for Claude Code and Codex. Paste one instruction into
+your agent and it clones this repo, imports every X (Twitter) bookmark, and opens a local,
+searchable screen of all your saved tweets. Everything stays on your own disk.
 
 **The promise:** it reuses the Chrome session you are already signed into, so there
 is no login step, no pasted cookies, and no API keys. Everything lands on your own
@@ -23,26 +23,46 @@ about RLHF reward models?" and the agent answers with the original tweets cited.
 
 ## One paste, and all your tweets are on screen
 
-Open this folder in your agent, then paste the instruction below. The agent imports
-every bookmark, builds the knowledge base, and opens `kb.html`, a fast, searchable
-screen of all your saved tweets.
+You clone nothing and set up nothing yourself. Open **Claude Code** or **Codex** in any
+folder, paste the prompt below, and the agent clones this repo, captures your bookmarks
+through the browser you are already signed into, builds the knowledge base, and opens
+`kb.html` — a fast, searchable screen of every tweet you ever saved.
 
-```bash
-cd tweetmark && claude      # or: codex
-```
-
-Then paste this and let the agent do the rest:
+**Copy this whole block and paste it into Claude Code or Codex:**
 
 ```text
-Use the bookmarks skill to import ALL my X/Twitter bookmarks. Reuse my already
-logged-in Chrome session: do not ask me to log in, and do not ask for cookies or API
-keys. Run the full pipeline (collect --full, ingest, enrich, build_kb, index) into the
-default knowledge-base folder, then open kb.html so I can see every tweet on one
-screen. If the headless browser cannot authenticate, set up the bundled userscript and
-import that export instead. When you finish, tell me how many bookmarks you imported.
+Clone and run the TweetMark skill from https://github.com/harrrshall/tweetmark, then
+show me the UI with all of my X/Twitter bookmarks on screen. Do the whole thing end to
+end. Never ask me to log in, and never ask me for cookies, passwords, or API keys.
+
+1. git clone https://github.com/harrrshall/tweetmark and cd into the tweetmark folder.
+   The skill lives in .agents/skills/bookmarks — read its SKILL.md and follow it.
+2. Capture ALL my bookmarks by reusing the Chrome session I am already signed into:
+   open x.com/i/bookmarks in my browser, fetch the Bookmarks timeline in-page, and
+   scroll/paginate until the entire list is captured. If you cannot drive my browser
+   directly, set up the bundled userscript (.agents/skills/bookmarks/assets/collector.user.js),
+   have me scroll my bookmarks once, and import the bookmarks_raw.jsonl it downloads.
+3. Run the full pipeline into the default knowledge-base folder, in order:
+   collect --full, then ingest, then enrich, then build_kb, then index.
+4. Open the generated kb.html so I land directly on the searchable screen of my tweets.
+5. Tell me how many bookmarks you imported and where the knowledge base is saved.
 ```
 
-Everything below is detail, alternatives, and the engineering behind it.
+That single paste is the whole product. Everything below is detail, alternatives, and
+the engineering behind it.
+
+### Prefer to run it yourself, no agent?
+
+Clone the repo and run the one-command launcher. It captures, builds, and opens the UI:
+
+```bash
+git clone https://github.com/harrrshall/tweetmark
+cd tweetmark
+./tweetmark import     # capture your bookmarks, build the KB, open kb.html
+```
+
+Re-open the UI any time with `./tweetmark open`; pull in new bookmarks later with
+`./tweetmark sync`.
 
 ---
 
